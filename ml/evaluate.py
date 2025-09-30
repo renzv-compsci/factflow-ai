@@ -20,12 +20,12 @@ def map_liar_label(label):
         return 1
     else:
         return None 
+    
 
 def load_test_data(test_data_path, has_header=True, custom_text_col=None, custom_label_col=None):
     # detect file format 
     sep = '\t' if test_data_path.endswith('.tsv') else ','
     header = 0 if has_header else None
-
     df = pd.read_csv(test_data_path, sep=sep, header=header)
 
     # if no header, assign column names 
@@ -58,6 +58,11 @@ def load_test_data(test_data_path, has_header=True, custom_text_col=None, custom
         if label_col is None:
             print(f"No label column found. Columns available: {df.columns}")
             sys.exit(1)
+    
+    print("Columns:", df.columns)
+    print("Columns:", df.columns)
+    print("First row data:", df.iloc[0])
+    print("Last row data:", df.iloc[-1])
 
     return df, text_col, label_col
 
@@ -75,43 +80,31 @@ def main (test_data_paths, model_path='ml/models/logreg_model.joblib', vectorize
         X_test = df[text_col]
         y_test = df[label_col]
 
-        # Map string labels to binary classes
-        y_test_mapped = y_test.apply(map_liar_label)
-
         # Vectorize text
         X_test_tfidf = vectorizer.transform(X_test)
-
         # Predict
         y_pred = model.predict(X_test_tfidf)
-        # Map predictions if model outputs string labels
-        try:
-            y_pred_mapped = pd.Series(y_pred).apply(map_liar_label)
-        except Exception:
-            y_pred_mapped = y_pred
 
-        # Remove samples where label mapping failed (None)
-        valid_idx = y_test_mapped.notnull()
+        # map y_test 
+        if str (label_col) == "binary_label" or int(label_col) == 13:
+            y_test_mapped = pd.Series(y_test).astype(int)
+            y_pred_mapped = pd.Series(y_pred).astype(int)
+        else: 
+            y_test_mapped = pd.Series(y_test).apply(map_liar_label)
+            y_pred_mapped = pd.Series(y_pred).apply(map_liar_label)
+
+        # filter out rows
+        valid_idx = (~y_test_mapped.isnull()) & (~pd.Series(y_pred_mapped).isnull())
         y_test_mapped = y_test_mapped[valid_idx]
         y_pred_mapped = pd.Series(y_pred_mapped)[valid_idx]
 
-        # metrics 
-        acc = accuracy_score(y_test_mapped, y_pred_mapped)
-        print(f"Accuracy: {acc: .2f}\n")
-
-        print("Classification report:")
+        if len(y_test_mapped) == 0:
+            print("No valid samples after label mapping")
+            continue
+        
         labels = sorted(list(set(y_test_mapped)))
-        try:
-            print(classification_report(y_test_mapped, y_pred_mapped, target_names=[str(l) for l in labels]))
-        except Exception as e:
-            print(classification_report(y_test_mapped, y_pred_mapped))
-            print("Error in classification_report:", e)
-
-        # for label names 
-        labels = sorted(list(set(y_test_mapped)))
-        try: 
-            print(classification_report(y_test_mapped, y_pred_mapped, target_names=[str(1) for l in labels]))
-        except Exception:
-            print(classification_report(y_test_mapped, y_pred_mapped))
+        print("Classification Report:")
+        print(classification_report(y_test_mapped, y_pred_mapped, target_names=[str(l) for l in labels]))
 
         # confussion matrix 
         cm = confusion_matrix(y_test_mapped, y_pred_mapped, labels=labels)
@@ -130,6 +123,7 @@ if __name__ == "__main__":
     parser.add_argument('--text_col', type=str, default=None, help='Name of the text column if not auto-detectable')
     parser.add_argument('--label_col', type=str, default=None, help='Name of the label column if not auto-detectable')
     args = parser.parse_args()
+
     main(
         args.test_data_paths,
         model_path=args.model_path,
