@@ -1,43 +1,54 @@
-from sklearn.feature_extraction.text import TfidfVectorizer
 import pandas as pd
+from sklearn.feature_extraction.text import TfidfVectorizer
 from sklearn.linear_model import LogisticRegression
-from sklearn.model_selection import cross_val_score
+from sklearn.metrics import classification_report
+from sklearn.model_selection import GridSearchCV, StratifiedKFold, cross_val_predict
+from sklearn.pipeline import Pipeline
+from sklearn.preprocessing import StandardScaler
+from scipy.sparse import hstack, csr_matrix
+
 # Load Data
-fake_df = pd.read_csv('ml/data/Fake.csv')
-real_df = pd.read_csv('ml/data/True.csv')
+df = pd.read_csv('ml/data/test_set/train_mapped.tsv', sep='\t')
+print(df.columns) # Debug 
 
-# Add label: 0 for fake news, 1 for real news
-fake_df['label'] = 0
-real_df['label'] = 1
+# Combine relevant text columns (by index)
+text_cols = ['2', '3', '4', '5', '6', '7', '13']
+df['combined_text'] = df.apply(lambda row: ' '.join([str(row[col]) for col in text_cols]), axis=1)
 
-# Stacks two dataframes 
-df = pd.concat([fake_df, real_df], ignore_index=True)
+# Numeric features
+numeric_cols = ['8', '9', '10', '11', '12']
+X_numeric = df[numeric_cols].fillna(0).values
+scaler = StandardScaler()
+X_numeric_scaled = scaler.fit_transform(X_numeric)
 
-# Mix two data
-df = df.sample(frac=1, random_state=42).reset_index(drop=True)
+# Target label
+y = df['binary_label']
 
-# Check correct text column 
-if 'text' in df.columns:
-    X = df['text']
-elif 'title' in df.columns:
-    X = df['title']
-else: 
-    raise ValueError ("No 'text' or 'title' column")
-# DataFrame df with columns 'text' 'label'
-X = df['text']
-y = df['label']
-
-# Vectorize the text (turn text into numbers)
+# Text vectorization
 vectorizer = TfidfVectorizer(stop_words='english', max_df=0.7)
-X_tfidf = vectorizer.fit_transform(X)
+X_text_tfidf = vectorizer.fit_transform(df['combined_text'])
 
-# Set up the model
-model = LogisticRegression(max_iter=1000)
+# Combine text and numeric features
+X_all = hstack([X_text_tfidf, csr_matrix(X_numeric_scaled)])
 
-# Perform 5-fold cross - validation (cv = 5)
-scores = cross_val_score(model, X_tfidf, y, cv=5, scoring='accuracy')
+# Stratified K-Fold cross-validation
+skf = StratifiedKFold(n_splits=5, shuffle=True, random_state=42)
 
-# Print results 
-print("Cross-validation score for each fold: ",scores)
-print("Mean Accuracy: ", scores.mean())
-print("Standard deviation: ", scores.std())
+# ML pipeline
+pipeline = Pipeline([
+    ('clf', LogisticRegression(max_iter=1000, class_weight='balanced'))
+])
+
+# Hyperparameter grid
+param_grid = {'clf__C': [0.01, 0.1, 1, 10]}
+
+# Grid search for best parameters
+grid = GridSearchCV(pipeline, param_grid, cv=skf, scoring='f1', n_jobs=-1)
+grid.fit(X_all, y)
+print("Best Parameters:", grid.best_params_)
+best_model = grid.best_estimator_
+
+# Cross-validated predictions, evaluation
+y_pred = cross_val_predict(best_model, X_all, y, cv=skf)
+
+print(classification_report(y, y_pred))
