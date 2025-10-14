@@ -60,4 +60,3 @@ def test_vectorizer_not_empty():
     X_text_tfidf = vectorizer.fit_transform(df['combined_text'])
     assert X_text_tfidf.shape[0] == len(df)
     assert X_text_tfidf.shape[1] > 0  # Should have some features
-
