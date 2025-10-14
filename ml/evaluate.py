@@ -5,6 +5,7 @@ import pandas as pd
 from sklearn.metrics import accuracy_score, classification_report, confusion_matrix
 import seaborn as sns 
 import matplotlib.pyplot as plt 
+from sklearn.utils import resample
 
 from utils import preprocess_dataframe
 
@@ -21,7 +22,26 @@ def map_liar_label(label):
     else:
         return None 
     
+def balance_classes(df, label_col):
+    df_minority = df[df[label_col] == df[label_col].value_counts().idxmin()]
+    df_majority = df[df[label_col] == df[label_col].value_counts().idxmax()]
+    df_minority_upsampled = resample(df_minority, replace=True, n_samples=len(df_majority), random_state=42)
+    print(df['binary_label'].value_counts())
 
+    return pd.concat([df_majority, df_minority_upsampled])
+
+    
+def check_required_columns(df, required_cols):
+    missing = [c for c in required_cols if c not in df.columns]
+
+    if missing: 
+        raise ValueError(f"Missing columns: {missing}")
+
+def check_numeric_columns(df, numeric_cols):
+    for col in numeric_cols:
+        if not pd.api.types.is_numeric_dtype(df[col]):
+            raise TypeError(f"Column '{col}' must be numeric but got {df[col].dtype}")
+    
 def load_test_data(test_data_path, has_header=True, custom_text_col=None, custom_label_col=None):
     # detect file format 
     sep = '\t' if test_data_path.endswith('.tsv') else ','
