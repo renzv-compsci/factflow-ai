@@ -86,11 +86,10 @@ def load_test_data(test_data_path, has_header=True, custom_text_col=None, custom
 
     return df, text_col, label_col
 
-def main (test_data_paths, model_path='ml/models/logreg_model.joblib', vectorizer_path='ml/models/tfidf_vectorizer.joblib', has_header=True, custom_text_col=None, custom_label_col=None):
+def main (test_data_paths, model_path='ml/models/logreg_pipeline.joblib', has_header=True, custom_text_col=None, custom_label_col=None):
 
     # Load model & vectorizer   
     model = joblib.load(model_path)
-    vectorizer = joblib.load(vectorizer_path)
 
     for test_data_path in test_data_paths: 
         print(f"\n=== Evaluating: {test_data_path}===")
@@ -100,10 +99,8 @@ def main (test_data_paths, model_path='ml/models/logreg_model.joblib', vectorize
         X_test = df[text_col]
         y_test = df[label_col]
 
-        # Vectorize text
-        X_test_tfidf = vectorizer.transform(X_test)
         # Predict
-        y_pred = model.predict(X_test_tfidf)
+        y_pred = model.predict(X_test)
 
         # map y_test 
         if str (label_col) == "binary_label" or int(label_col) == 13:
@@ -136,9 +133,8 @@ def main (test_data_paths, model_path='ml/models/logreg_model.joblib', vectorize
 
 if __name__ == "__main__": 
     parser = argparse.ArgumentParser(description="Evaluate the trained model on test set(s).")
-    parser.add_argument('test_data_paths', nargs='+', help='Paths to the test data files (CSV or TSV)')
-    parser.add_argument('--model_path', type=str, default='ml/models/logreg_model.joblib', help='Path to trained model file')
-    parser.add_argument('--vectorizer_path', type=str, default='ml/models/tfidf_vectorizer.joblib', help='Path to vectorizer file')
+    parser.add_argument('test_data_paths', nargs='+', default='ml/data/test_set/train_mapped.tsv',help='Paths to the test data files (CSV or TSV)')
+    parser.add_argument('--model_path', type=str, default='ml/models/logreg_pipeline.joblib', help='Path to trained model')
     parser.add_argument('--no_header', action='store_true', help='Indicate that the test data files DON\'T have headers')
     parser.add_argument('--text_col', type=str, default=None, help='Name of the text column if not auto-detectable')
     parser.add_argument('--label_col', type=str, default=None, help='Name of the label column if not auto-detectable')
@@ -147,7 +143,6 @@ if __name__ == "__main__":
     main(
         args.test_data_paths,
         model_path=args.model_path,
-        vectorizer_path=args.vectorizer_path,
         has_header=not args.no_header,
         custom_text_col=args.text_col,
         custom_label_col=args.label_col
