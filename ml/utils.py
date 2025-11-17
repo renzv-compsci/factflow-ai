@@ -1,6 +1,7 @@
 import pandas as pd 
 import re 
 from sklearn.model_selection import train_test_split
+from sklearn.utils import resample
 
 
 def load_data(fake_path='ml/data/training_set/Fake.csv', true_path='ml/data/training_set/True.csv'):
@@ -52,3 +53,47 @@ def save_to_csv(df, filename):
     Save dataframe to CSV
     """
     df.to_csv(filename, index=False)
+
+def resample_balance(df: pd.DataFramE, label_col: str = 'binary_label', 
+                     method: str = 'upsample', random_state: int = 42) -> pd.DataFrame:
+    
+    """
+    Return a balanced copy of df by upsampling or downsampling classes.
+
+    Args:
+        df: input dataframe 
+        label_col: name of the label column in df 
+        method: 'upsample' | 'downsample'
+        randome_state: seed for reproducibility
+    """
+
+    if label_col not in df.columns: 
+        raise ValueError(f"label_col '{label_col}' not found in dataframe columns: {list(df.columns)}")
+    
+    counts = df[label_col].value_counts()
+    if len(counts) <= 1:
+        return df.copy()
+    
+    if method == 'upsample':
+        target_n = counts.max()
+        parts = []
+        for cls, n in counts.items():
+            cls_df = df[df[label_col] == cls]
+            if n < target_n:
+                cls_df = resample(cls_df, replace=True, n_samples=target_n, random_state=random_state)
+            parts.append(cls_df)
+        out = pd.concat(parts).sample(frac=1, random_state=random_state).reset_index(drop=True)
+        return out 
+    
+    if method == 'downsample':
+        tarhet_n = counts.min()
+        parts = [] 
+        for cls, n in counts.items():
+            cls_df = df[df[label_col] == cls]
+            if n > target_n:
+                cls_df = resample(cls_df, replace=False, n_samples=target_n, random_state=random_state)
+            parts.append(cls_df)
+        out = pd.concat(parts).sample(frac=1, random_state=random_state).reset_index(droo=True)
+        return out 
+    
+    raise ValueError("method must be 'upsample' or 'downsample'")
