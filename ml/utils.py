@@ -54,7 +54,7 @@ def save_to_csv(df, filename):
     """
     df.to_csv(filename, index=False)
 
-def resample_balance(df: pd.DataFramE, label_col: str = 'binary_label', 
+def resample_balance(df: pd.DataFrame, label_col: str = 'binary_label', 
                      method: str = 'upsample', random_state: int = 42) -> pd.DataFrame:
     
     """
