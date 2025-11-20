@@ -1,7 +1,10 @@
-import pandas as pd 
-import re 
+import pandas as pd
+import re
+from pathlib import Path
 from sklearn.model_selection import train_test_split
 from sklearn.utils import resample
+import numpy as np
+from typing import Iterable, Optional
 
 
 def load_data(fake_path='ml/data/training_set/Fake.csv', true_path='ml/data/training_set/True.csv'):
@@ -97,3 +100,51 @@ def resample_balance(df: pd.DataFrame, label_col: str = 'binary_label',
         return out 
     
     raise ValueError("method must be 'upsample' or 'downsample'")
+
+def find_model(paths: Iterable[str]) -> Optional[str]:
+    """
+    Return first existing path 
+    """
+    for p in paths: 
+        if Path(p).exists():
+            return p
+    return None
+
+def positive_proba(model, X, positive_label=1):
+    """
+    Return probability 
+    Falls back safely for common binary cases
+    """
+
+    probs = model.predict_proba(X)
+    classes = list(getattr(model, "classes_", []))
+    if positive_label in classes: 
+        idx = classes.index(positive_label)
+        return probs[:, idx]
+    if probs.shape[1] == 2:
+        return probs[:, 1]
+    return probs[:, 0]
+
+LIAR_TO_BINARY = { 
+    "true": 1, "mostly-true": 1, "true-ish": 1, "half-true": 1,
+    "barely-true": 0, "mostly-false": 0, "false": 0, "pants-fire": 0
+}
+
+def map_liar_label(v) -> Optional[int]:
+    """
+    Map LIAR-style label strings or numeric to 0/1 or None if unknown.
+    Centralize mapping so all scripts are consistent.
+    """
+    try: 
+        if pd.isna(v):
+            return None
+        if isinstance(v, (int, float)):
+            return int(v)
+        s = str(v).strip().lower()
+        if s in("1", "1.0", "true", "t", "yes"):
+            return 1
+        if s in("0", "0.0", "false", "f", "no"):
+            return 0
+        return LIAR_TO_BINARY.get(s, None)
+    except Exception:
+        return None
