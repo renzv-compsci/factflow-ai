@@ -4,6 +4,7 @@ from joblib import load
 import pandas as pd
 import numpy as np
 from sklearn.metrics import roc_auc_score, classification_report
+from ml.config import LEGACY_MODEL_PATHS
 
 def find_model(paths):
     for p in paths: 
@@ -12,7 +13,7 @@ def find_model(paths):
         except Exception:
             continue
     return None, None 
-
+                        
 def _sigmoid(x):
     return 1.0 / (1.0 + np.exp(-np.asarray(x)))
 
@@ -89,9 +90,9 @@ def summarize(probs, y, label):
 def main(model_paths=None, data_path='ml/data/test_set/train_mapped.tsv', text_col='2', label_col='binary_label'):
     if model_paths is None: 
         model_paths = ['ml/models/logreg_pipeline.joblib', 'logreg_pipeline.joblib', 'models/logreg_pipeline.joblib']
-    model, used = find_model(model_paths)
+    model, used = find_model(LEGACY_MODEL_PATHS)
     if model is None: 
-        print("No model found in paths:", model_paths)
+        print("No model found in paths:", {LEGACY_MODEL_PATHS})
         sys.exit(1)
     print("Loaded model from:", used)
 
