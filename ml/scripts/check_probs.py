@@ -2,15 +2,22 @@ from joblib import load
 import pandas as pd 
 from sklearn.metrics import roc_auc_score, classification_report
 import numpy as np 
+from ml.config import LEGACY_MODEL_PATHS
+from ml.utils import find_model, positive_proba
 
-m = load('logreg_pipeline.joblib')
+mp = find_model(LEGACY_MODEL_PATHS)
+if mp is None:
+    raise FileNotFoundError(f"No model found in {LEGACY_MODEL_PATHS}")
+m = load(mp)
+print("Using model:", mp, "classes:", getattr(m, "classes_", None))
+
 df = pd.read_csv('ml/data/test_set/train_mapped.tsv', sep='\t', engine='python')
 X = df.iloc[:, int('2')]
 y = df['binary_label'].astype(int)
 
 # get probs, handle both cases 
 if hasattr(m, 'predict_proba'):
-    probs = m.predict_proba(X)[:, 1]
+    probs = positive_proba(m, X, positive_label=1)
 else:
     scores = m.decision_function(X)
     probs = 1 /(1 + np.exp(-scores))
