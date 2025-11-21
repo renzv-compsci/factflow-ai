@@ -34,12 +34,12 @@ def clean_text(text):
     text = text.strip()
     return text 
 
-def preprocess_dataframe(df, text_column='text'):
+def preprocess_dataframe(df, text_column, clean_fn):
     """
-    Apply clean_text to a given column in the dataframe
+    Apply clean_fn to a given column in the dataframe
     """
-    df = df.dropna(subset=[text_column])
-    df [text_column] = df[text_column].apply(clean_text)
+    df = df.copy()
+    df.loc[:, text_column] = df.loc[:, text_column].astype(str).apply(clean_fn)
     return df 
 
 def split_data(df, test_size=0.2, random_state=42):
