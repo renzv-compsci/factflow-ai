@@ -1,8 +1,7 @@
 import argparse
-import sys
 import joblib
 import pandas as pd
-from sklearn.metrics import accuracy_score, classification_report, confusion_matrix
+from sklearn.metrics import classification_report, confusion_matrix
 import seaborn as sns
 import matplotlib.pyplot as plt
 from sklearn.utils import resample
