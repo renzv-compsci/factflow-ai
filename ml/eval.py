@@ -8,6 +8,8 @@ from sklearn.metrics import classification_report, roc_auc_score
 from sklearn.model_selection import GridSearchCV, train_test_split
 from sklearn.feature_extraction.text import TfidfVectorizer
 from sklearn.pipeline import Pipeline
+from ml.config import USE_PREPROCESS
+from ml.utils import clean_text
 
 def main(data_path, text_col, label_col, out_model, random_state=42):
     df = pd.read_csv(data_path, sep="\t", engine="python")
@@ -19,6 +21,9 @@ def main(data_path, text_col, label_col, out_model, random_state=42):
     except Exception:
         X = df[text_col].astype(str)
     y = df[label_col].astype(int)
+
+    if USE_PREPROCESS:
+        X = X.apply(clean_text)
 
     X_train, X_val, y_train, y_val = train_test_split (X, y, test_size=0.2, random_state=random_state, stratify=y)
 
