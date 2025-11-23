@@ -7,3 +7,5 @@ LEGACY_MODEL_PATHS = [
     "ml/models/logreg_pipeline.joblib",
     "models/logreg_pipeline.joblib",
 ]
+
+USE_PREPROCESS = False
