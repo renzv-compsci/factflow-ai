@@ -5,12 +5,15 @@ from sklearn.metrics import classification_report, confusion_matrix
 import seaborn as sns
 import matplotlib.pyplot as plt
 from sklearn.utils import resample
+from ml.config import USE_PREPROCESS
+from ml.utils import clean_text
 
 # try both relative and absolute imports for helpers
 try:
     from .utils import preprocess_dataframe, resample_balance
 except Exception:
     from .utils import preprocess_dataframe, resample_balance
+
 
 
 def map_liar_label(label):
@@ -105,13 +108,18 @@ def main(test_data_paths, model_path='ml/models/logreg_pipeline.joblib', has_hea
             print("DEBUG - columns:", list(df.columns))
             print("DEBUG - sample rows:\n", df.head(3))
 
+        # Determine the text col label
+        if isinstance(text_col, int):
+            text_col_label = df.columns[int(text_col)]
+
+        else:
+            text_col_label = text_col
+
         try:
-            # preprocess_dataframe expects a column label; if text_col is an index, convert it
-            if isinstance(text_col, int):
-                text_col_label = df.columns[int(text_col)]
+            if USE_PREPROCESS:
+                df = preprocess_dataframe(df, text_column=text_col_label)
             else:
-                text_col_label = text_col
-            df = preprocess_dataframe(df, text_column=text_col_label)
+                df = df.copy()
         except Exception as e:
             print(f"ERROR preprocessing '{test_data_path}': {e}")
             continue
@@ -148,6 +156,16 @@ def main(test_data_paths, model_path='ml/models/logreg_pipeline.joblib', has_hea
         # If X_test is a single-column DataFrame, convert to Series (pipeline expects 1D text input)
         if isinstance(X_test, pd.DataFrame) and X_test.shape[1] == 1:
             X_test = X_test.iloc[:, 0]
+
+        # Ensure X_test contains no NaNs and is string-typed for the vectorizer.
+        # Trim whitespace and optionally apply configured preprocessing.
+        try:
+            X_test = X_test.fillna("").astype(str).apply(lambda s: s.strip())
+            if USE_PREPROCESS:
+                X_test = X_test.apply(clean_text)
+        except Exception as e:
+            print(f"ERROR preparing text inputs: {e}")
+            continue
 
         # Predict
         try:
